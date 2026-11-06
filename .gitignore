@@ -1,0 +1,41 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Local credentials and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
+# Local runtime databases & IPC queues
+unified/data/
+*.db
+*.db-shm
+*.db-wal
+*.pid
+*.sock
+*.log
+
+# Local AI-agent context. Keep private workspace instructions out of releases.
+.aios_shared_context.md
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+
+# Dynamic SemanticFS symlinks
+SemanticFS/
+
+# OS & Editor metadata
+.DS_Store
+.idea/
+.vscode/

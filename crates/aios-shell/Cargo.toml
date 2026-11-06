@@ -1,0 +1,18 @@
+[package]
+name = "aios-shell"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+aios-core = { path = "../aios-core" }
+
+[[bin]]
+name = "aios"
+path = "src/main.rs"

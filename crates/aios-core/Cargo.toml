@@ -1,0 +1,25 @@
+[package]
+name = "aios-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+ring.workspace = true
+uuid.workspace = true
+rusqlite.workspace = true
+regex.workspace = true
+clap.workspace = true
+aios-memory = { path = "../aios-memory" }
+aios-sandbox = { path = "../aios-sandbox" }
+
+[[bin]]
+name = "aiosd"
+path = "src/main.rs"

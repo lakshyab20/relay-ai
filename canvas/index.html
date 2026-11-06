@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-OS — Generative Intent Canvas</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            canvas: {
+              base: '#0B0D11',
+              card: '#131720',
+              border: '#1F2633',
+              hover: '#191E2A',
+              active: '#1E2536'
+            },
+            accent: {
+              blue: '#3B82F6',
+              cyan: '#06B6D4',
+              emerald: '#10B981',
+              amber: '#F59E0B',
+              rose: '#F43F5E',
+              violet: '#8B5CF6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0B0D11;
+      background-image: radial-gradient(rgba(31, 38, 51, 0.45) 1px, transparent 1px);
+      background-size: 32px 32px;
+      color: #E2E8F0;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .glass-panel {
+      background: rgba(19, 23, 32, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-input {
+      background: rgba(15, 18, 26, 0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .glow-blue {
+      box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.25);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 35px -5px rgba(6, 182, 212, 0.25);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-slate-200">
+
+  <!-- ================= TOP OS SYSTEM HUD STRIP ================= -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-canvas-border px-6 py-2.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-accent-blue via-accent-cyan to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <i data-lucide="cpu" class="w-4 h-4 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-sm tracking-tight text-white">AI-OS</span>
+          <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Intent Canvas</span>
+          <span class="text-[10px] font-mono text-slate-500">v0.2.0-spatial</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Spaces Switcher -->
+    <div id="spaces-tabs" class="flex items-center space-x-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+      <!-- Injected dynamically -->
+    </div>
+
+    <!-- Kernel Telemetry -->
+    <div class="flex items-center space-x-4 text-xs font-mono">
+      <div class="flex items-center space-x-1.5 text-slate-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-500">Latency:</span>
+        <span class="text-emerald-400 font-semibold" id="hud-latency">0.24 ms</span>
+      </div>
+      <div class="flex items-center space-x-1.5 text-slate-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span class="text-slate-500">Tokens:</span>
+        <span class="text-cyan-400 font-semibold" id="hud-tokens">4 Active [ocap]</span>
+      </div>
+      <div class="flex items-center space-x-1.5 text-slate-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+        <i data-lucide="database" class="w-3.5 h-3.5 text-violet-400"></i>
+        <span class="text-slate-500">Memory:</span>
+        <span class="text-violet-400 font-semibold">1,482 entities</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= OMNI-INTENT BAR (CENTERED PROMPT) ================= -->
+  <section class="max-w-4xl w-full mx-auto px-6 pt-8 pb-4">
+    <div class="glass-input rounded-2xl p-2.5 glow-blue transition-all duration-300">
+      <form id="intent-form" class="flex items-center space-x-3 px-3 py-1">
+        <div class="text-blue-400">
+          <i data-lucide="sparkles" class="w-5 h-5 animate-pulse"></i>
+        </div>
+        <input
+          id="intent-input"
+          type="text"
+          placeholder="Declare an intent (e.g. 'Audit vendor proposals', 'Simulate GPU cluster burn', 'Draft launch plan')..."
+          class="flex-1 bg-transparent border-none outline-none text-white text-base placeholder-slate-500 font-medium focus:ring-0"
+          autocomplete="off"
+        />
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-semibold tracking-wide flex items-center space-x-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95"
+        >
+          <span>Synthesize</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Suggested Instant Intent Chips -->
+    <div class="flex items-center justify-center flex-wrap gap-2 pt-3 text-xs">
+      <span class="text-slate-500 font-mono text-[11px]">Quick Intents:</span>
+      <button onclick="switchPresetSpace('vendor')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition flex items-center space-x-1.5">
+        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-blue-400"></i>
+        <span>Audit Vendor Contracts</span>
+      </button>
+      <button onclick="switchPresetSpace('infra')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition flex items-center space-x-1.5">
+        <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span>GPU Cluster Surge &amp; Burn</span>
+      </button>
+      <button onclick="switchPresetSpace('sprint')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition flex items-center space-x-1.5">
+        <i data-lucide="git-pull-request" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Sprint Release &amp; Blockers</span>
+      </button>
+      <button onclick="switchPresetSpace('microkernel')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition flex items-center space-x-1.5">
+        <i data-lucide="layers" class="w-3.5 h-3.5 text-violet-400"></i>
+        <span>seL4 Microkernel Memo</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ================= THE GENERATIVE CANVAS WORKSPACE ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-4 flex flex-col space-y-6">
+
+    <!-- Space Header Banner -->
+    <div class="flex items-center justify-between border-b border-canvas-border pb-3">
+      <div class="flex items-center space-x-3">
+        <span id="current-space-badge" class="px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          Active Space
+        </span>
+        <h1 id="current-space-title" class="text-xl font-bold tracking-tight text-white">
+          Vendor Proposal Audit &amp; Negotiation
+        </h1>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="foldSpaceToMemory()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-300 hover:text-white flex items-center space-x-1.5 transition">
+          <i data-lucide="archive" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Fold to Memory</span>
+        </button>
+        <button onclick="resetWorkspace()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-300 hover:text-white flex items-center space-x-1.5 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span>Synthesize Fresh</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- The Dynamically Generated Modules Grid -->
+    <div id="modules-container" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Injected by JavaScript based on active space -->
+    </div>
+  </main>
+
+  <!-- ================= NOTIFICATION / ACTION TOAST ================= -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none glass-panel px-4 py-3 rounded-xl border border-white/10 flex items-center space-x-3 shadow-2xl">
+    <div id="toast-icon" class="text-emerald-400">
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+    </div>
+    <div>
+      <div id="toast-title" class="text-xs font-bold text-white">Capability Action Executed</div>
+      <div id="toast-desc" class="text-[11px] text-slate-400 font-mono">Token: ocap-7f41 verified in 0.18ms</div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPT LOGIC ================= -->
+  <script>
+    // State of workspaces
+    const spaces = {
+      vendor: {
+        id: 'vendor',
+        name: 'Vendor Audit',
+        title: 'Vendor Contract Audit & Objection Synthesis',
+        render: renderVendorAuditSpace
+      },
+      infra: {
+        id: 'infra',
+        name: 'GPU Burn Simulator',
+        title: 'GPU Cluster Burn Rate vs Budget & Surge Model',
+        render: renderInfraSpace
+      },
+      sprint: {
+        id: 'sprint',
+        name: 'Sprint Health',
+        title: 'Sprint Release Readiness & Blocker Graph',
+        render: renderSprintSpace
+      },
+      microkernel: {
+        id: 'microkernel',
+        name: 'Microkernel Research',
+        title: 'seL4 vs Linux Microkernel Architectural Memo',
+        render: renderMicrokernelSpace
+      }
+    };
+
+    let activeSpaceId = 'vendor';
+
+    // 1. Render Tabs
+    function updateSpacesTabs() {
+      const tabs = document.getElementById('spaces-tabs');
+      tabs.innerHTML = Object.values(spaces).map(s => `
+        <button
+          onclick="switchPresetSpace('${s.id}')"
+          class="px-3 py-1 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 ${
+            s.id === activeSpaceId
+              ? 'bg-blue-600/30 text-blue-300 border border-blue-500/30 shadow'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }"
+        >
+          <span>${s.name}</span>
+        </button>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function switchPresetSpace(id) {
+      if (spaces[id]) {
+        activeSpaceId = id;
+        document.getElementById('current-space-title').textContent = spaces[id].title;
+        updateSpacesTabs();
+        spaces[id].render();
+        simulateKernelLatency();
+      }
+    }
+
+    function simulateKernelLatency() {
+      const lat = (Math.random() * 0.15 + 0.18).toFixed(2);
+      document.getElementById('hud-latency').textContent = `${lat} ms`;
+    }
+
+    // ================= SPACE 1: VENDOR CONTRACT AUDIT =================
+    function renderVendorAuditSpace() {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = `
+        <!-- MODULE 1: Structured Comparison Grid (8 cols) -->
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <div class="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                <i data-lucide="table-properties" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Synthesized Comparison (3 Ingested Proposals)</h2>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">Auto-Extracted from Attachments</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-white/5 text-slate-400 font-mono uppercase text-[10px] border-b border-white/5">
+                <tr>
+                  <th class="py-2.5 px-3">Vendor</th>
+                  <th class="py-2.5 px-3">Annual Cost</th>
+                  <th class="py-2.5 px-3">SLA Uptime</th>
+                  <th class="py-2.5 px-3">Liability Cap</th>
+                  <th class="py-2.5 px-3">Anomaly Assessment</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5 font-sans">
+                <tr class="hover:bg-white/[0.02]">
+                  <td class="py-3 px-3 font-semibold text-white flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <span>CloudScale Networks</span>
+                  </td>
+                  <td class="py-3 px-3 font-mono font-medium">$142,000</td>
+                  <td class="py-3 px-3">99.99%</td>
+                  <td class="py-3 px-3">12x Monthly Fees</td>
+                  <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Optimal Terms</span></td>
+                </tr>
+                <tr class="hover:bg-white/[0.02]">
+                  <td class="py-3 px-3 font-semibold text-white flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>Apex Compute Corp</span>
+                  </td>
+                  <td class="py-3 px-3 font-mono font-medium">$198,000</td>
+                  <td class="py-3 px-3">99.95%</td>
+                  <td class="py-3 px-3">1x Monthly Fees</td>
+                  <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/20">+39% Over Market</span></td>
+                </tr>
+                <tr class="hover:bg-white/[0.02]">
+                  <td class="py-3 px-3 font-semibold text-white flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+                    <span>Nexus Data Systems</span>
+                  </td>
+                  <td class="py-3 px-3 font-mono font-medium">$155,000</td>
+                  <td class="py-3 px-3">99.90%</td>
+                  <td class="py-3 px-3">3x Monthly Fees</td>
+                  <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20">Weak SLA Penalty</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Staged Counter-Offer Draft -->
+          <div class="mt-4 p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-300 font-mono">Synthesized Objection Draft to Apex Compute</span>
+              <span class="text-[10px] font-mono text-cyan-400">Model: Tier-1 Speculative Reasoner</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed font-sans">
+              "We have reviewed Apex's revised annual pricing of $198k. Comparative benchmarks across our concurrent bids show an average tier of $148k for identical compute commitments. Additionally, a 1x monthly fee liability cap does not satisfy our standard enterprise risk policy. We counter at $150k annual with a 6x liability clause."
+            </p>
+          </div>
+        </div>
+
+        <!-- MODULE 2: Dynamic Negotiation Simulator & Action Controls (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col space-y-6">
+
+          <!-- Interactive Parameter Slider Card -->
+          <div class="glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Negotiation Target Slider</span>
+              <span id="discount-val" class="text-xs font-mono font-bold text-cyan-400">22% Discount Target</span>
+            </div>
+            <input
+              id="discount-slider"
+              type="range"
+              min="5"
+              max="40"
+              value="22"
+              class="w-full accent-cyan-400 bg-white/10 rounded-lg cursor-pointer"
+              oninput="updateVendorDiscount(this.value)"
+            />
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+                <div class="text-[10px] font-mono text-slate-500">Projected Savings</div>
+                <div id="savings-amount" class="text-base font-bold font-mono text-emerald-400 pt-0.5">$43,560 / yr</div>
+              </div>
+              <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+                <div class="text-[10px] font-mono text-slate-500">Target Budget</div>
+                <div id="target-budget" class="text-base font-bold font-mono text-white pt-0.5">$154,440</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capability Actions -->
+          <div class="glass-panel rounded-2xl p-6 flex flex-col space-y-3">
+            <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">Kernel Action Enclave</span>
+            <button
+              onclick="triggerAction('Dispatch Counter-Proposal', 'Apex Compute POC', 'ocap-0a81')"
+              class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs tracking-wide transition flex items-center justify-between shadow-lg shadow-blue-500/20 active:scale-95"
+            >
+              <span>Transmit Counter-Offer Email</span>
+              <span class="text-[10px] font-mono bg-black/20 px-1.5 py-0.5 rounded">Requires TouchID</span>
+            </button>
+            <button
+              onclick="triggerAction('Export to Semantic Knowledge Graph', 'Finance / Q3 Vendor Ledger', 'ocap-9b12')"
+              class="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs transition flex items-center justify-between border border-white/5 active:scale-95"
+            >
+              <span>Commit Comparison to Memory</span>
+              <i data-lucide="save" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function updateVendorDiscount(val) {
+      document.getElementById('discount-val').textContent = `${val}% Discount Target`;
+      const base = 198000;
+      const savings = Math.round(base * (val / 100));
+      const target = base - savings;
+      document.getElementById('savings-amount').textContent = `$${savings.toLocaleString()} / yr`;
+      document.getElementById('target-budget').textContent = `$${target.toLocaleString()}`;
+    }
+
+    // ================= SPACE 2: GPU CLUSTER BURN SIMULATOR =================
+    function renderInfraSpace() {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = `
+        <div class="lg:col-span-7 glass-panel rounded-2xl p-6 flex flex-col space-y-5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <div class="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Cluster Telemetry &amp; Burn Projection</h2>
+            </div>
+            <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">32x H100 SXM5 Online</span>
+          </div>
+
+          <!-- Live Reactive Chart -->
+          <div class="h-44 w-full bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-end justify-between space-x-2">
+            ${[45, 52, 60, 68, 72, 75, 82, 88, 92, 85, 78, 84, 91, 95]
+              .map((val, i) => `
+                <div class="flex-1 flex flex-col items-center space-y-1">
+                  <div class="w-full bg-gradient-to-t from-cyan-600 to-blue-400 rounded-t transition-all duration-300" style="height: ${val * 1.4}px;"></div>
+                  <span class="text-[9px] font-mono text-slate-500">${i + 1}h</span>
+                </div>
+              `).join('')}
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">Hourly Burn</div>
+              <div id="hourly-burn" class="text-base font-bold font-mono text-cyan-400 pt-0.5">$92.80 / hr</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">Runway at Peak</div>
+              <div class="text-base font-bold font-mono text-emerald-400 pt-0.5">42 Days</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">KV-Cache Reuse Rate</div>
+              <div class="text-base font-bold font-mono text-violet-400 pt-0.5">78.4%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 flex flex-col space-y-6">
+          <div class="glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+            <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Traffic Surge Parameter</span>
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs font-mono">
+                <span class="text-slate-400">Surge Multiplier</span>
+                <span id="surge-val" class="text-cyan-400 font-bold">1.5x Traffic</span>
+              </div>
+              <input
+                type="range"
+                min="1.0"
+                max="3.0"
+                step="0.1"
+                value="1.5"
+                class="w-full accent-cyan-400 bg-white/10 rounded-lg cursor-pointer"
+                oninput="updateSurge(this.value)"
+              />
+            </div>
+
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5 space-y-1">
+              <div class="text-[10px] font-mono text-slate-500">Autonomous Scaling Policy</div>
+              <div class="text-xs text-slate-300">Auto-route 1B-3B requests to on-device NPUs when cloud cluster utilization hits 85%.</div>
+            </div>
+
+            <button
+              onclick="triggerAction('Deploy Autoscaler Rule', 'Kubernetes H100 Pool', 'ocap-4d22')"
+              class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs tracking-wide transition flex items-center justify-center space-x-2 shadow-lg shadow-cyan-500/20 active:scale-95"
+            >
+              <span>Apply Cloud-to-Edge Policy</span>
+              <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function updateSurge(val) {
+      document.getElementById('surge-val').textContent = `${val}x Traffic`;
+      const burn = (92.80 * parseFloat(val)).toFixed(2);
+      document.getElementById('hourly-burn').textContent = `$${burn} / hr`;
+    }
+
+    // ================= SPACE 3: SPRINT RELEASE & BLOCKER GRAPH =================
+    function renderSprintSpace() {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = `
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <i data-lucide="git-merge" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Synthesized Pull Request &amp; Blocker Flow</h2>
+            </div>
+            <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">v0.9.4 Staging</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+              <div class="space-y-0.5">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs font-mono font-bold text-white">PR #482</span>
+                  <span class="text-xs text-slate-300 font-medium">Rust zero-copy rkyv serialization for UDS</span>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono">Author: @alex • 32 files • Passed CI</div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ready to Merge</span>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+              <div class="space-y-0.5">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs font-mono font-bold text-white">PR #489</span>
+                  <span class="text-xs text-slate-300 font-medium">Wasmtime runtime memory page quota guard</span>
+                </div>
+                <div class="text-[11px] text-rose-400 font-mono flex items-center space-x-1">
+                  <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+                  <span>Blocked: Missing seccomp Linux bpf tests</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-400 border border-rose-500/20">Staging Blocker</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Autonomous Actions</span>
+          <button
+            onclick="triggerAction('Simulate Sandboxed Merge &amp; Test Run', 'Branch #489', 'ocap-119c')"
+            class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs tracking-wide transition flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/20 active:scale-95"
+          >
+            <span>Spin Sandbox CI Container</span>
+            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // ================= SPACE 4: MICROKERNEL MEMO =================
+    function renderMicrokernelSpace() {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = `
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="p-1.5 rounded-lg bg-violet-500/10 text-violet-400">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono">seL4 vs Linux Microkernel Comparison Memo</h2>
+            </div>
+            <span class="text-[11px] font-mono text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">Synthesized 4 Sources</span>
+          </div>
+          <div class="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs text-slate-300 leading-relaxed">
+            <p><strong class="text-white">seL4 Advantage:</strong> Formally verified mathematical proof of security and memory isolation. Zero buffer overflows possible in kernel space. Perfect for the cognitive capability arbiter.</p>
+            <p><strong class="text-white">Linux Advantage:</strong> Existing hardware driver support for Apple Silicon, NVIDIA GPUs, and USB audio/camera peripherals.</p>
+            <p><strong class="text-white">Our Hybrid Verdict:</strong> Run a lightweight Linux kernel for device drivers, with a userland seL4-inspired micro-arbiter for AI capability tokens.</p>
+          </div>
+        </div>
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Publish</span>
+          <button
+            onclick="triggerAction('Publish Memo to Team Drive', 'Engineering / Architecture', 'ocap-99aa')"
+            class="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs tracking-wide transition flex items-center justify-center space-x-2 shadow-lg shadow-violet-500/20 active:scale-95"
+          >
+            <span>Publish Architectural Memo</span>
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // ================= CUSTOM INTENT COMPILER =================
+    document.getElementById('intent-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const input = document.getElementById('intent-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      simulateKernelLatency();
+
+      // Dynamically compile any prompt into a tailored custom space
+      const customId = 'custom_' + Date.now();
+      spaces[customId] = {
+        id: customId,
+        name: val.slice(0, 16) + '...',
+        title: val,
+        render: () => renderCustomSpace(val)
+      };
+
+      activeSpaceId = customId;
+      document.getElementById('current-space-title').textContent = val;
+      updateSpacesTabs();
+      renderCustomSpace(val);
+      input.value = '';
+    });
+
+    function renderCustomSpace(prompt) {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = `
+        <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <div class="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Dynamically Synthesized Intent Tile</h2>
+            </div>
+            <span class="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">Compiled via Intent Scheduler</span>
+          </div>
+
+          <div class="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
+            <div class="text-xs font-mono text-slate-400 uppercase">Intent Objective</div>
+            <div class="text-sm font-semibold text-white">"${prompt}"</div>
+            <div class="text-xs text-slate-400 leading-relaxed pt-2">
+              The AI-OS kernel has automatically ingested semantic associations from your local files and created this transient reactive space. No static application was opened.
+            </div>
+          </div>
+
+          <!-- Dynamic KPI Strip -->
+          <div class="grid grid-cols-3 gap-3 pt-2">
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">Security Gate</div>
+              <div class="text-xs font-bold font-mono text-emerald-400 pt-0.5">Verified [ocap-7f]</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">Associated Context</div>
+              <div class="text-xs font-bold font-mono text-cyan-400 pt-0.5">3 Files Indexed</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5">
+              <div class="text-[10px] font-mono text-slate-500">Sandbox Isolation</div>
+              <div class="text-xs font-bold font-mono text-violet-400 pt-0.5">WASM Page OK</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col space-y-4">
+          <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Execute Action</span>
+          <button
+            onclick="triggerAction('Execute Goal Action', '${prompt}', 'ocap-dyn-01')"
+            class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs tracking-wide transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/20 active:scale-95"
+          >
+            <span>Confirm &amp; Run Intent</span>
+            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+          </button>
+          <button
+            onclick="foldSpaceToMemory()"
+            class="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium text-xs transition flex items-center justify-center space-x-2 border border-white/5"
+          >
+            <span>Dissolve &amp; Commit to Memory</span>
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // ================= ACTIONS & TOASTS =================
+    function triggerAction(actionName, target, token) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-title').textContent = `${actionName}`;
+      document.getElementById('toast-desc').textContent = `Target: ${target} • Token: ${token} verified`;
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      simulateKernelLatency();
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    function foldSpaceToMemory() {
+      triggerAction('Space Folded into Episodic Memory', document.getElementById('current-space-title').textContent, 'ocap-archive');
+      setTimeout(() => {
+        switchPresetSpace('vendor');
+      }, 800);
+    }
+
+    function resetWorkspace() {
+      switchPresetSpace(activeSpaceId);
+    }
+
+    // Keyboard shortcut (Cmd+K or Ctrl+K)
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('intent-input').focus();
+      }
+    });
+
+    // Initialize
+    updateSpacesTabs();
+    spaces[activeSpaceId].render();
+  </script>
+</body>
+</html>
